@@ -196,7 +196,7 @@ solo_test <- solo_test %>%
 duo_test <- duo_test %>%
   select(-one_of(drop_cols2))
 squad_test <- squad_test %>%
-  select(-one_of(drop_col2))
+  select(-one_of(drop_cols2))
 
 ##Test.Solo Dataframes
 solo_test <- solo_test %>% 
@@ -285,15 +285,15 @@ squad_test <- squad_test %>%
 ##Final Predictions!!!##
 
 ##Solo##
-test.solo.predictions <- predict(model,newdata=test.solo2)
-test.solo.predictions <- data.frame("Id" = test.solo$Id, "winPlacePerc" = test.solo.predictions)
+test.solo.predictions <- predict(model,newdata=solo_test)
+test.solo.predictions <- data.frame("Id" = solo_test$Id, "winPlacePerc" = test.solo.predictions)
 
 ##Duo##
-test.duo.predictions <- predict(duo.model,newdata=test.duo2)
+test.duo.predictions <- predict(duo.model,newdata=duo_test)
 
-final.duo <- data.frame("groupId" = test.duo2$groupId, "winPlacePerc" = test.duo.predictions)
+final.duo <- data.frame("groupId" = duo_test$groupId, "winPlacePerc" = test.duo.predictions)
 
-test.duo <- subset(test.duo, select= -c(matchId, assists, boosts, damageDealt, DBNOs,
+test.duo <- subset(duo_test, select= -c(matchId, assists, boosts, damageDealt, DBNOs,
                                         headshotKills, heals, killPlace, killPoints, kills, killStreaks,
                                         longestKill, matchDuration, matchType, maxPlace, numGroups, rankPoints,
                                         revives, rideDistance, roadKills, swimDistance, teamKills, swimDistance, teamKills,
