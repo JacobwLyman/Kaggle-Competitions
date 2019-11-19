@@ -10,11 +10,24 @@ str(test)
 
 ####Clean Data####
 solo_df <- train %>% 
-  filter(matchType == c('solo','solo-fpp','normal-solo','normal-solo-fpp'))
+  filter(matchType == c('solo'
+                        ,'solo-fpp'
+                        ,'normal-solo'
+                        ,'normal-solo-fpp'))
 duo_df <- train %>%
-  filter(matchType == c('duo','duo-fpp','normal-duo','normal-duo-fpp','crashfpp','crashtpp'))
+  filter(matchType == c('duo'
+                        ,'duo-fpp'
+                        ,'normal-duo'
+                        ,'normal-duo-fpp'
+                        ,'crashfpp'
+                        ,'crashtpp'))
 squad_df <- train %>%
-  filter(matchType == c('squad','squad-fpp','normal-squad','normal-squad-fpp','flarefpp','laretpp'))
+  filter(matchType == c('squad'
+                        ,'squad-fpp'
+                        ,'normal-squad'
+                        ,'normal-squad-fpp'
+                        ,'flarefpp'
+                        ,'laretpp'))
 
 drop_cols <- c('Id', 'groupId', 'assists', 'matchType', 'numGroups', 'revives', 'teamKills')
 solo_df <- solo_df %>%
@@ -185,11 +198,24 @@ mean(abs(temp.squad-rf.squad.predictions))
 
 ####Testing####
 solo_test <- test %>% 
-  filter(matchType == c('solo','solo-fpp','normal-solo','normal-solo-fpp'))
+  filter(matchType == c('solo'
+                        ,'solo-fpp'
+                        ,'normal-solo'
+                        ,'normal-solo-fpp'))
 duo_test <- test %>%
-  filter(matchType == c('duo','duo-fpp','normal-duo','normal-duo-fpp','crashfpp','crashtpp'))
+  filter(matchType == c('duo'
+                        ,'duo-fpp'
+                        ,'normal-duo'
+                        ,'normal-duo-fpp'
+                        ,'crashfpp'
+                        ,'crashtpp'))
 squad_test <- test %>%
-  filter(matchType == c('squad','squad-fpp','normal-squad','normal-squad-fpp','flarefpp','laretpp'))
+  filter(matchType == c('squad'
+                        ,'squad-fpp'
+                        ,'normal-squad'
+                        ,'normal-squad-fpp'
+                        ,'flarefpp'
+                        ,'laretpp'))
 
 solo_test <- solo_test %>%
   select(-one_of(drop_cols))
