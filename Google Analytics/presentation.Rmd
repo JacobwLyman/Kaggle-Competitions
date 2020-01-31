@@ -1,0 +1,398 @@
+---
+title: "Fun with Thumbtack"
+author: "Jacob Lyman"
+date: "`r format(Sys.time(), '%Y %B %d')`"
+output:
+  html_document:
+    pdf_document: null
+    code_folding: hide
+    theme: lumen
+    toc: yes
+    toc_float: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+---
+
+```{r, echo=FALSE}
+htmltools::img(src = knitr::image_uri("thumbtack_logo.png"), 
+               alt = 'logo', 
+               align = 'right',
+               style = 'position:relative; top:-140px; right:70px; 
+               padding:10px; width:200px; float:right;')
+```
+
+```{r global_option, message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(knitr)
+library(kableExtra)
+library(ggridges)
+library(jsonlite)
+
+options(scipen = 999)
+
+setwd("~/Data Analysis/Kaggle-Competitions/Google Analytics")
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+train <- read_csv('my_train.csv') %>%
+  select(-X1)
+test <- read_csv('my_test.csv') %>%
+  select(-X1)
+```
+
+<br>
+<br>
+<br>
+
+_**About this document**_: This is an R Markdown document. It is intended to be interactive and reproducible. When using this document, please notice the navigation window in the top left corner of the page. I have also included code snippets that you can review by clicking on the various **`CODE`** buttons throughout this document. I believe that any data analysis should be transperant and reproducible where possible. Because of this, readers can also review the entire underlying code of this document in its accompanying .Rmd file.
+
+<br>
+
+# **Introduction**
+
+<br>
+
+The 80/20 rule has proven true for many businesses–only a small percentage of customers produce most of the revenue. As such, marketing teams are challenged to make appropriate investments in promotional strategies.
+
+In this competition, you’re challenged to analyze a customer dataset to predict revenue per customer. Hopefully, the outcome will be more actionable operational changes and a better use of marketing budgets for those companies who choose to use data analysis on top of GA data.
+
+<br>
+
+# **Data**
+
+Kaggle offers two primary data sets for this competitions: `train_v2.csv` and `test_v2.csv`. In their raw formats, both equate to a file size of 30.8 GB. The training set by itself is 23.7 GB. This presents a problem in the fact that a user typically can't load the entire file into R or Python due to RAM limitations. 
+
+Below is an example of the dataset provided to us by Kaggle:
+```{r message=FALSE, warning=FALSE, include=FALSE}
+df <- read.csv(file="~/Data Analysis/Kaggle-Competitions/Google Analytics/train_v2.csv",nrows=10)
+
+df %>%
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),full_width = F)
+```
+
+We can see that there appears to be a nested data structure within several of the columns, namely `device`, `hits1`, `geoNetwork`, `totals`, and `trafficSource`
+
+In order to load this data for analysis, we must use the following code:
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+#### Load data ####
+
+# Flatten JSON function
+json_to_columns <- function(df, column){
+  column <- enquo(column)
+  
+  json_df <- df %>% 
+    pull(!!column) %>% 
+    paste(collapse = ",") %>% 
+    paste("[",.,"]") %>% 
+    fromJSON(flatten = TRUE)
+  
+  df %>% 
+    select(-!!column) %>% 
+    bind_cols(json_df)
+}
+
+# Iteratively read .csv file
+
+df <- read.csv(file="~/Data Analysis/Kaggle-Competitions/Google Analytics/train_v2.csv",nrows=5)
+col_names <- colnames(df)
+
+chunksize <- 20000
+con <- file("~/Data Analysis/Kaggle-Competitions/Google Analytics/train_v2.csv", "r", blocking = FALSE) #create file connection
+d=scan(con,what="a",nlines=1,sep=",") #remove the header line
+
+n <- Sys.time()
+
+train <- data.frame()
+for(i in seq(1,903653,chunksize)){
+  
+  d=scan(con,what="a",nlines=chunksize,sep=",",quiet=TRUE)
+  d = t(matrix(d,nrow=13))
+  d = data.frame(d)
+  
+  colnames(d) <- col_names
+  
+  temp_df1 <- d %>%
+    json_to_columns(device) %>%
+    json_to_columns(geoNetwork) %>%
+    json_to_columns(totals) %>%
+    json_to_columns(trafficSource)
+  
+  temp_df <- temp_df1 %>%
+    dplyr::select(
+            channelGrouping
+           , date
+           , fullVisitorId
+           , visitId
+           , visitNumber
+           , visitStartTime
+           , browser
+           , operatingSystem
+           , isMobile
+           , deviceCategory
+           , continent
+           , subContinent
+           , country
+           , region
+           , metro
+           , city
+           , networkDomain
+           , hits1
+           , pageviews
+           , bounces
+           , newVisits
+           , sessionQualityDim
+           , timeOnSite
+           , transactions
+           , transactionRevenue
+           , totalTransactionRevenue
+           , campaign
+           , source
+           , medium
+           , keyword
+           , referralPath
+           , isTrueDirect
+           , adContent)
+  
+  train <- bind_rows(train, temp_df)
+}
+
+processing <- Sys.time() - n
+processing #15 minutes
+
+#### Pre-processing ####
+
+rm(d)
+rm(temp_df)
+rm(con)
+rm(n)
+rm(con)
+rm(df)
+rm(col_names)
+
+write.csv(train,'my_train.csv')
+
+# Load in test data
+
+test <- read_csv('test_v2.csv')
+
+test <- test %>%
+  json_to_columns(device) %>%
+  json_to_columns(geoNetwork) %>%
+  json_to_columns(totals) %>%
+  json_to_columns(trafficSource)
+
+test <- test %>%
+  dplyr::select(
+    channelGrouping
+    , date 
+    , fullVisitorId
+    , visitId
+    , visitNumber
+    , visitStartTime
+    , browser
+    , operatingSystem
+    , isMobile
+    , deviceCategory
+    , continent
+    , subContinent
+    , country
+    , region
+    , metro
+    , city
+    , networkDomain
+    , hits1
+    , pageviews
+    , bounces
+    , newVisits
+    , sessionQualityDim
+    , timeOnSite
+    , transactions
+    , transactionRevenue
+    , totalTransactionRevenue
+    , campaign
+    , source
+    , medium
+    , keyword
+    , referralPath
+    , isTrueDirect
+    , adContent)
+
+write.csv(test,'my_test.csv')
+```
+
+# **Data Engineering Process**
+
+In order to solve the first and major problem of this competition, I had to take the following steps:
+- Become acquainted with the data
+  - Massive data set size was an immediate worry
+  - I was luckily informed by the community of the nested JSON format arrays. Though the data set was only 13 columns of ~1 Million rows, the nested arrays created such a large amount of stored data.
+- Kaggle Kernel
+  - Too little RAM
+- GCP VM + GCP Storage Bucket (Didn't work because of data size issues)
+  - Spool up GCP instance
+  - Download R, R Server, and R Studio
+  - Create Storage Bucket
+    - Data sets were still too large to migrate to GCP Storage Bucket
+- Iteratively read and break down data set on local machine
+  - Took only like 30 minutes
+- Load compressed data sets into GCP Storage Bucket
+- GCP VM to train Neural Net
+  - Issues with R Markdown
+- Personal machine to compile R Markdown document
+
+
+# **Exploratory Data Analysis**
+
+Below is a sample of our current data set
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+train %>%
+  tail(100) %>%
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),full_width = F)
+
+```
+
+```{r}
+length(unique(train$visitId))
+```
+Why do we have duplicated visit IDs?
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#### Clean Data ####
+
+# Reclassify the variables
+str(train)
+
+train <- train %>%
+  mutate(channelGrouping = as.factor(channelGrouping)
+         , date = date
+         , fullVisitorId = as.factor(fullVisitorId)
+         , visitId = as.factor(visitId)
+         , visitNumber = as.factor(visitNumber)
+         , visitStartTime = as.factor(visitStartTime)
+         , browser = as.factor(browser)
+         , operatingSystem = as.factor(operatingSystem)
+         , isMobile = as.logical(isMobile)
+         , deviceCategory = as.factor(deviceCategory)
+         , continent = as.factor(continent)
+         , subContinent = as.factor(subContinent)
+         , country = as.factor(country)
+         , region = as.factor(region)
+         , metro = as.factor(metro)
+         , city = as.factor(city)
+         , networkDomain = as.factor(networkDomain)
+         , hits1 = as.numeric(hits1)
+         , pageviews = as.numeric(pageviews)
+         , bounces = as.numeric(bounces)
+         , newVisits = as.numeric(newVisits)
+         , sessionQualityDim = as.numeric(sessionQualityDim)
+         , timeOnSite = as.numeric(timeOnSite)
+         , transactions = as.numeric(transactions)
+         , transactionRevenue = as.numeric(transactionRevenue)
+         , totalTransactionRevenue = as.numeric(totalTransactionRevenue)
+         , campaign = as.factor(campaign)
+         , source = source
+         , medium = as.factor(medium)
+         , keyword = as.factor(keyword)
+         , referralPath = referralPath 
+         , isTrueDirect = isTrueDirect
+         , adContent = as.factor(adContent)
+  )
+
+sum(is.na(train$date))
+
+df_dates <- as.data.frame(unique(train$date))
+
+# train2 <- train %>%
+#   mutate(date = as.Date.numeric(date, "%Y%m%d"))
+
+# Remove NAs
+train$transactionRevenue[is.na(train$transactionRevenue)] <- 0
+train$transactions[is.na(train$transactions)] <- 0
+train$totalTransactionRevenue[is.na(train$totalTransactionRevenue)] <- 0
+
+train <- train %>%
+  mutate(timeOnSite = if_else(bounces == 1, 0, timeOnSite))
+
+train$isTrueDirect[is.na(train$isTrueDirect)] <- 'False'
+train <- train %>%
+  mutate(isTrueDirect = as.logical(isTrueDirect))
+```
+
+## What is the time frame of our data set?
+
+## What's the distribution of our numeric data?
+
+## Visitor vs Visit?
+...
+
+## Most profitable locations
+
+## What is the distribution of our transactions?
+
+## Do visitors make multiple transactions?
+
+## How many of our visitors actually make purchases?
+
+## Why are our transactions so high?? Are these in cents??
+
+## Barcharts of our respective factor levels
+
+## Business Insights
+
+# Feature Engineering
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+```
+
+
+# Neural Network
+
+... the code to create the matrix and training of our neural network is to be processed on my virtual machine. I will paste all of the code here, along with any necessary images, will be added to this markdown document at the end of my work. The outputs of my neural network will be submitted to kaggle. The only processing that will take on my machine will be to compile the R Markdown document.
+
+## What is a Neural Network?
+
+- It's incredibly useful when working with big data
+  - Can learn things that a human couldn't feasibly
+  - Effecient
+  - However, they can take a lot of processing and are more prone to being a black box.
+
+
+# Recommendations for Immediate Application of Business Insights
+- Targetted marketing to most productive locations
+
+# Additional Work
+
+## Unsupervised learning to lower dimensionality and factor levels
+
+<br>
+
+## 
+
+
+# **Appendix**
+
+## Data Fields
+
+  - `fullVisitorId` - A unique identifier for each user of the Google Merchandise Store.
+  - `channelGrouping` - The channel via which the user came to the Store.
+  - `date` - The date on which the user visited the Store.
+  - `device` - The specifications for the device used to access the Store.
+  - `geoNetwork` - This section contains information about the geography of the user.
+  - `socialEngagementType` - Engagement type, either "Socially Engaged" or "Not Socially Engaged".
+  - `totals` - This section contains aggregate values across the session.
+  - `trafficSource` - This section contains information about the Traffic Source from which the session originated.
+  - `visitId` - An identifier for this session. This is part of the value usually stored as the _utmb cookie. This is only unique to the user. For a completely unique ID, you should use a combination of fullVisitorId and visitId.
+  - `visitNumber` - The session number for this user. If this is the first session, then this is set to 1.
+  - `visitStartTime` - The timestamp (expressed as POSIX time).
+hits - This row and nested fields are populated for any and all types of hits. Provides a record of all page visits.
+  - `customDimensions` - This section contains any user-level or session-level custom dimensions that are set for a session. This is a repeated field and has an entry for each dimension that is set.
+  - `totals` - This set of columns mostly includes high-level aggregate data.
+  
+<br>
+
