@@ -6,9 +6,6 @@ setwd("/home/jacob_w_lyman/home")
 
 train <- read_csv("my_train.csv") %>%
   select(-X1)
-test <- read_csv("my_test.csv") %>%
-  select(-X1)
-
 
 ####Clean Data####
 train <- train %>%
@@ -47,32 +44,42 @@ train <- train %>%
          , adContent = as.factor(adContent)
   )
 
-train <- train %>%
-  mutate(timeOnSite = if_else(bounces == 1, 0, timeOnSite))
-
 train$isTrueDirect[is.na(train$isTrueDirect)] <- 'False'
 train <- train %>%
-  mutate(isTrueDirect = as.logical(isTrueDirect))
-
-sum(is.na(train$date))
-
-df_dates <- as.data.frame(unique(train$date))
-
-# train2 <- train %>%
-#   mutate(date = as.Date.numeric(date, "%Y%m%d"))
+  mutate(isTrueDirect = as.logical(isTrueDirect)
+         , isTrueDirect = as.numeric(isTrueDirect)
+         , isMobile = as.numeric(isMobile))
 
 # Remove NAs
 train$transactionRevenue[is.na(train$transactionRevenue)] <- 0
 train$transactions[is.na(train$transactions)] <- 0
 train$totalTransactionRevenue[is.na(train$totalTransactionRevenue)] <- 0
 
+# NOTE: These next few lines are replacing NAs with 0 but should treated differently
+train$timeOnSite[is.na(train$timeOnSite)] <- 0
+train$newVisits[is.na(train$newVisits)] <- 0
+train$bounces[is.na(train$bounces)] <- 0
+train$pageviews[is.na(train$pageviews)] <- 0
+train$sessionQualityDim[is.na(train$sessionQualityDim)] <- 0
 
 #### Feature Engineering ####
 
+# Scale continuous columns
+train_scaled <- train %>%
+  select(hits1
+         , pageviews
+         , bounces
+         , newVisits
+         , sessionQualityDim
+         , timeOnSite
+         , transactions
+         , transactionRevenue)
 
-####Neural Network #####
-install.packages('caret')
-library(caret)
+maxs <- apply(train_scaled,2,max)
+mins <- apply(train_scaled,2,min)
+scaled_data <- as.data.frame(scale(train_scaled,center=mins,scale=maxs-mins))
+
+rm(train_scaled, maxs, mins)
 
 #Create dummy variables of important factor columns for matrix
 newtrain <- train %>%
@@ -97,26 +104,32 @@ newtrain3 <- train %>%
 newtrain3 <- model.matrix(~., data = newtrain3)
 newtrain3 <- as.data.frame(newtrain3)
 
-train <- cbind(train,newtrain[,-1], newtrain2[,-1], newtrain3[,-1])
+train <- cbind(newtrain[,-1], newtrain2[,-1], newtrain3[,-1])
 
 rm(newtrain,newtrain2,newtrain3)
 
-#Scale data
+# FinalScaled Data Set
+train <- cbind(scaled_data,train)
+rm(scaled_data)
 
-maxs <- apply(train,2,max)
-mins <- apply(train,2,min)
-scaled.data <- as.data.frame(scale(train,center=mins,scale=maxs-mins))
+# Split Train Set
+train <- train %>%
+  select(transactions, everything())
+trainIndex <- createDataPartition(train$transactions, p = 0.75, list = FALSE)
+train_set <- train[trainIndex,]
+validation_set <- train[-trainIndex,]
 
-trainIndex <- createDataPartition(scaled.data$transactions, p = 0.75, list = FALSE)
+rm(train,trainIndex)
 
-train_set <- scaled.data[trainIndex,]
-validation_set <- scaled.data[-trainIndex,]
+####Neural Network #####
+library('caret')
 
-features <- colnames(scaled.data[,2:length(scaled.data)])
+features <- colnames(train_set[,2:length(train_set)])
 f <- paste(features, collapse = ' + ')
 f <- paste("transactions ~", features)
 set.seed(911)
 
+library(neuralnet)
 my_neuralnetwork <- neuralnet(f,data=train_set[1:10000,],hidden=c(500,300,100),linear.output=T)
 
 pr.nn <- compute(nn, validation_set[2:ncol(validation_set)])
@@ -128,5 +141,8 @@ MAE.nn <- mean(abs(test.r - pr.nn2))
 print(MAE.nn)
 
 #### Final Test Predictions ####
+
+test <- read_csv("my_test.csv") %>%
+  select(-X1)
 
 # Clean Test Data for Model Predictions
