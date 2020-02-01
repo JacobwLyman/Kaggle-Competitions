@@ -1,6 +1,8 @@
 
 ####Load Data####
 library(tidyverse)
+library(caret)
+library(neuralnet)
 
 setwd("/home/jacob_w_lyman/home")
 
@@ -115,22 +117,22 @@ rm(scaled_data)
 # Split Train Set
 train <- train %>%
   select(transactions, everything())
-trainIndex <- createDataPartition(train$transactions, p = 0.75, list = FALSE)
+trainIndex <- caret::createDataPartition(train$transactions, p = 0.75, list = FALSE)
 train_set <- train[trainIndex,]
 validation_set <- train[-trainIndex,]
 
 rm(train,trainIndex)
 
 ####Neural Network #####
-library('caret')
-
 features <- colnames(train_set[,2:length(train_set)])
 f <- paste(features, collapse = ' + ')
 f <- paste("transactions ~", features)
 set.seed(911)
 
-library(neuralnet)
-my_neuralnetwork <- neuralnet(f,data=train_set[1:10000,],hidden=c(500,300,100),linear.output=T)
+n <- Sys.time()
+my_neuralnetwork <- neuralnet::neuralnet(f,data=train_set[1:10000,],hidden=c(500,300,100),linear.output=T)
+model_processing <- Sys.time() - n
+model_processing
 
 pr.nn <- compute(nn, validation_set[2:ncol(validation_set)])
 pr.nn2 <- pr.nn$net.result*(max(nndata$attempts_range)-min(nndata$attempts_range))+min(nndata$attempts_range)
