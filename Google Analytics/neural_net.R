@@ -115,8 +115,44 @@ train <- cbind(scaled_data,train)
 rm(scaled_data)
 
 # Split Train Set
+# names(train) <- gsub(x = names(train),
+#                          pattern = " ",
+#                          replacement = "")
+# names(train_set) <- gsub(x = names(train_set),
+#                      pattern = ";",
+#                      replacement = "")
+# names(train_set) <- gsub(x = names(train_set),
+#                          pattern = ":",
+#                          replacement = "")
+# names(train_set) <- gsub(x = names(train_set),
+#                          pattern = "-",
+#                          replacement = "")
+# names(train_set) <- gsub(x = names(train_set),
+#                          pattern = "]",
+#                          replacement = "")
+# names(train_set) <- gsub(x = names(train_set),
+#                          pattern = "/",
+#                          replacement = "")
+# names(train_set) <- gsub(x = names(train_set),
+#                          pattern = "&",
+#                          replacement = "")
 train <- train %>%
   select(transactions, everything())
+train <- train[,1:200]
+new_names <- 2:200
+new_names <- as.character(new_names)
+colnames(train)[2:200] <- new_names
+
+
+# train_set <- train_set %>%
+#   rename(newName = 'browser[UsedefaultUseragentstringLIVRENPOCHE')
+# train_set <- train_set %>%
+#   rename(newName2 = 'countryCôted’Ivoire')
+# train_set <- train_set %>%
+#   rename(newName3 = 'campaignValueShoppersAffinity')
+# train_set <- train_set %>%
+#   rename(newName4 = 'campaignTechnologyTechnophiles')
+
 trainIndex <- caret::createDataPartition(train$transactions, p = 0.75, list = FALSE)
 train_set <- train[trainIndex,]
 validation_set <- train[-trainIndex,]
@@ -126,11 +162,11 @@ rm(train,trainIndex)
 ####Neural Network #####
 features <- colnames(train_set[,2:length(train_set)])
 f <- paste(features, collapse = ' + ')
-f <- paste("transactions ~", features)
+f <- paste('transactions ~', f)
 set.seed(911)
 
 n <- Sys.time()
-my_neuralnetwork <- neuralnet::neuralnet(f,data=train_set[1:10000,],hidden=c(500,300,100),linear.output=T)
+my_neuralnetwork <- neuralnet(f,data=train_set[1:10000,],hidden=c(500,300,100),linear.output=T)
 model_processing <- Sys.time() - n
 model_processing
 
@@ -141,6 +177,10 @@ test.r <- (validation_set$attempts_range)*(max(nndata$attempts_range)-min(nndata
 MAE.nn <- mean(abs(test.r - pr.nn2))
 
 print(MAE.nn)
+
+# OLS model
+
+my_OLS <- lm(transactions ~ .,data = train_set)
 
 #### Final Test Predictions ####
 
