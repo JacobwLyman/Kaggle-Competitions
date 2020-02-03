@@ -116,6 +116,9 @@ colnames(train) <- new_names
 train <- cbind(train_continuous,train)
 rm(train_continuous)
 
+train_set <- train_set %>% 
+  mutate(PredictedLogRevenue = if_else(PredictedLogRevenue == '-Inf',0,PredictedLogRevenue))
+
 trainIndex <- caret::createDataPartition(train$transactions, p = 0.75, list = FALSE)
 train_set <- train[trainIndex,]
 validation_set <- train[-trainIndex,]
@@ -126,7 +129,7 @@ rm(train,trainIndex)
 
 ## OLS model ##
 
-my_OLS <- lm(transactions ~ .,data = train_set)
+my_OLS <- lm(PredictedLogRevenue ~ .,data = validation_set)
 
 ## Random Forest model ##
 model <- randomForest(transactions ~ .,
