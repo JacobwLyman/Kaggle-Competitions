@@ -67,6 +67,44 @@ train$sessionQualityDim[is.na(train$sessionQualityDim)] <- 0
 
 #### Feature Engineering ####
 
+trainOLS <- train %>%
+  mutate(PredictedLogRevenue = log(transactionRevenue)) %>% 
+  mutate(PredictedLogRevenue = if_else(PredictedLogRevenue == '-Inf',0,PredictedLogRevenue)) %>%
+  select(PredictedLogRevenue 
+         , hits1
+         , pageviews
+         , bounces
+         , newVisits
+         , sessionQualityDim
+         , timeOnSite
+         , transactions
+         , channelGrouping
+         , operatingSystem
+         , isMobile
+         , deviceCategory
+         , country
+         , region)
+
+trainIndex <- caret::createDataPartition(trainOLS$PredictedLogRevenue, p = 0.75, list = FALSE)
+train_set <- trainOLS[trainIndex,]
+validation_set <- trainOLS[-trainIndex,]
+
+#### OLS model ####
+
+my_OLS <- lm(PredictedLogRevenue ~ .,data = train_set)
+
+# Validation
+true_values<- validation_set[,"PredictedLogRevenue"]
+
+predictions_OLS <- predict(my_OLS,newdata=validation_set)
+
+temp.duo <- as.vector(y.duo)
+temp.duo <- temp.duo$winPlacePerc
+
+mean(abs(temp.duo-rf.duo.predictions))
+
+#### Random Forest model ####
+
 train_continuous <- train %>%
   mutate(PredictedLogRevenue = log(transactionRevenue)) %>%
   select(PredictedLogRevenue 
@@ -76,7 +114,9 @@ train_continuous <- train %>%
          , newVisits
          , sessionQualityDim
          , timeOnSite
-         , transactions)
+         , transactions)  %>% 
+  mutate(PredictedLogRevenue = if_else(PredictedLogRevenue == '-Inf',0,PredictedLogRevenue))
+
 
 #Create dummy variables of important factor columns for matrix
 newtrain <- train %>%
@@ -116,22 +156,6 @@ colnames(train) <- new_names
 train <- cbind(train_continuous,train)
 rm(train_continuous)
 
-train <- train %>% 
-  mutate(PredictedLogRevenue = if_else(PredictedLogRevenue == '-Inf',0,PredictedLogRevenue))
-
-trainIndex <- caret::createDataPartition(train$transactions, p = 0.75, list = FALSE)
-train_set <- train[trainIndex,]
-validation_set <- train[-trainIndex,]
-
-rm(train,trainIndex)
-
-#### Models #####
-
-## OLS model ##
-
-my_OLS <- lm(PredictedLogRevenue ~ .,data = validation_set)
-
-## Random Forest model ##
 model <- randomForest(transactions ~ .,
                       data = validation_set, mtry = 5, ntree = 100, importance = TRUE)
 model
