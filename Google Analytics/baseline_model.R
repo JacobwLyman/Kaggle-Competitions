@@ -116,7 +116,7 @@ colnames(train) <- new_names
 train <- cbind(train_continuous,train)
 rm(train_continuous)
 
-train_set <- train_set %>% 
+train <- train %>% 
   mutate(PredictedLogRevenue = if_else(PredictedLogRevenue == '-Inf',0,PredictedLogRevenue))
 
 trainIndex <- caret::createDataPartition(train$transactions, p = 0.75, list = FALSE)
