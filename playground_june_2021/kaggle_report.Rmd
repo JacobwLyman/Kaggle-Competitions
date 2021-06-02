@@ -1,0 +1,11 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+First things first, I set up my directory with the `packrat::init()` command to setup an isolated project for easy handing off of my code. If you're not familiar with the `packrat` package, checkout a walkthrough [here](https://rstudio.github.io/packrat/walkthrough.html).
+
+```{r}
+
+```
+
