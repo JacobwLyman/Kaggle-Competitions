@@ -5,7 +5,130 @@ output: html_notebook
 
 First things first, I set up my directory with the `packrat::init()` command to setup an isolated project for easy handing off of my code. If you're not familiar with the `packrat` package, checkout a walkthrough [here](https://rstudio.github.io/packrat/walkthrough.html).
 
-```{r}
+```{r echo=FALSE}
+library(tidyverse)
+library(packrat)
+library(tidymodels)
+```
 
+```{r}
+competition_data <- read_csv('train.csv')
+competition_test <- read_csv('test.csv')
+sample_submission <- read_csv('sample_submission.csv')
+```
+
+# Model Training
+
+```{r}
+#### Split data ####
+
+set.seed(911)
+
+# Create random training, validation, and test sets
+train_split <- initial_split(competition_data, prop = 1/2)
+train_data <- training(train_split)
+
+validation_test_data <- testing(train_split)
+validation_test_split <- initial_split(validation_test_data, prop = 1/2)
+validation_data <- training(validation_test_split)
+
+test_data <- testing(validation_test_split)
+```
+
+
+## Pre-processing
+
+```{r}
+model_recipe <- 
+  recipe(target ~ ., data = train_data) %>% 
+  step_center(all_predictors()) %>%
+  step_scale(all_predictors())
+  #prep(training = train_data, retain = TRUE)
+```
+
+## Model Tuning
+
+```{r}
+#fit model
+train_cv <- rsample::vfold_cv(train_data, v = 5)
+
+model_specification <- 
+  multinom_reg(penalty = tune(), 
+             mixture = tune()) %>% 
+  set_engine("glmnet")
+
+model_workflow <- workflow() %>%
+  add_recipe(model_recipe) %>%
+  add_model(model_specification)
+
+model_grid <- expand_grid(penalty = seq(0,10, by = 0.5),
+                          mixture = seq(0,1, by = 0.1))
+
+model_tuned <- tune_grid(model_workflow, 
+                         resamples = train_cv, #cross-validation
+                         grid = model_grid) #grid of tunable values
+```
+
+## Model Selection
+
+```{r}
+#preview the tuning curve for penalty
+model_tuned %>% collect_metrics() %>%
+  ggplot(aes(penalty, mean, color = .metric)) +
+  geom_line(size = 1, show.legend = FALSE) +
+  geom_point(size = 1.5, show.legend = FALSE) +
+  facet_wrap(~.metric, scales = "free", nrow = 2) +
+  theme_bw()
+```
+```{r}
+#preview the tuning curve for mixture
+model_tuned %>% collect_metrics() %>%
+  ggplot(aes(mixture, mean, color = .metric)) +
+  geom_line(size = 1, show.legend = FALSE) +
+  geom_point(size = 1.5, show.legend = FALSE) +
+  facet_wrap(~.metric, scales = "free", nrow = 2) +
+  theme_bw()
+```
+
+```{r}
+#select the penalty that yields the lowest error
+bestPenalty <- model_tuned %>% select_best('roc_auc')
+#finalize workflow using the best penalty
+final <- finalize_workflow(model_workflow, bestPenalty)
+```
+
+```{r}
+final %>% 
+  #fit on train data
+  fit(train_data) %>%
+  #pull the fit
+  pull_workflow_fit() %>%
+  #get variable importance and mutate it with the absolute value of importance.
+  #reorder variables by their absolute importance
+  vi() %>%
+  mutate(Importance = abs(Importance),
+         Variable = fct_reorder(Variable, Importance)) %>%
+  #plot
+  ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+  geom_col()
+```
+
+```{r}
+#fit final model (from the final workflow) on the testing data and collect metrics
+final_fit <- last_fit(final, split = train_split) 
+
+final_fit %>% 
+  collect_metrics()
+```
+
+```{r}
+final_fit %>%
+  collect_predictions() %>%
+  conf_mat(target, .pred_class) %>%
+  pluck(1) %>%
+  as_tibble() %>%
+  ggplot(aes(Prediction, Truth, alpha = n)) +
+  geom_tile(show.legend = FALSE) +
+  geom_text(aes(label = n), colour = "white", alpha = 1, size = 8)
 ```
 
