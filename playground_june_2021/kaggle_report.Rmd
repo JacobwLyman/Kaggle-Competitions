@@ -3,18 +3,43 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-First things first, I set up my directory with the `packrat::init()` command to setup an isolated project for easy handing off of my code. If you're not familiar with the `packrat` package, checkout a walkthrough [here](https://rstudio.github.io/packrat/walkthrough.html).
+# Introduction
+
+First things first, I set up my directory with the `renv`::init()` command to setup an isolated project for easy handing off of my code. If you're not familiar with the `renv` package, checkout a walkthrough [here](https://rstudio.github.io/renv/articles/renv.html).
 
 ```{r echo=FALSE}
 library(tidyverse)
-library(packrat)
 library(tidymodels)
+library(renv)
+# renv::status()
+# renv::snapshot()
+# renv::restore()
 ```
+
+# Data Import
 
 ```{r}
 competition_data <- read_csv('train.csv')
 competition_test <- read_csv('test.csv')
 sample_submission <- read_csv('sample_submission.csv')
+```
+
+# EDA
+
+```{r}
+
+```
+
+# Data Cleaning
+
+```{r}
+
+```
+
+# Feature Engineering
+
+```{r}
+
 ```
 
 # Model Training
@@ -130,5 +155,11 @@ final_fit %>%
   ggplot(aes(Prediction, Truth, alpha = n)) +
   geom_tile(show.legend = FALSE) +
   geom_text(aes(label = n), colour = "white", alpha = 1, size = 8)
+```
+
+# Conclusion
+
+```{r}
+
 ```
 

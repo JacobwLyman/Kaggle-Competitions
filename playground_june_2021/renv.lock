@@ -597,13 +597,6 @@
       "Repository": "CRAN",
       "Hash": "e25078f6e770b81121672874474f69c0"
     },
-    "packrat": {
-      "Package": "packrat",
-      "Version": "0.6.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "0d6cc4c357e7602bb3eee299f4cfc2a5"
-    },
     "parallelly": {
       "Package": "parallelly",
       "Version": "1.25.0",
